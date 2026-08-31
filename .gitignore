@@ -8,8 +8,9 @@ node_modules/
 /playwright/.cache/
 /playwright/.auth/
 
+# Generated reports
+/reports/
+/tta-report/
+
 # Environment
 .env
-
-# Tooling
-.commandcode/

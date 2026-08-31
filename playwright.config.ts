@@ -8,6 +8,8 @@ import { defineConfig, devices } from '@playwright/test';
  dotenv.config();
 // import path from 'path';
 // dotenv.config({ path: path.resolve(__dirname, '.env') });
+const ATTACH_SCREENSHOTS = process.env.ATTACH_SCREENSHOTS?.toLowerCase() === 'true';
+
 
 function resolveBaseURL(): string {
   if (process.env.BASE_URL) return process.env.BASE_URL;
@@ -56,13 +58,16 @@ export default defineConfig({
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [
     ['html'],
-    ['list']
+    ['list'],
+    ['./src/utils/CustomReporter.ts'],
   ],
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('')`. */
     baseURL: resolveBaseURL(),
-    screenshot:'on-first-failure',
+    headless: false,
+    screenshot: ATTACH_SCREENSHOTS ? 'only-on-failure' : 'off',
+    
     video:'on',
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
