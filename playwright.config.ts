@@ -4,8 +4,8 @@ import { defineConfig, devices } from '@playwright/test';
  * Read environment variables from file.
  * https://github.com/motdotla/dotenv
  */
- import dotenv from 'dotenv';
- dotenv.config();
+import dotenv from 'dotenv';
+dotenv.config();
 // import path from 'path';
 // dotenv.config({ path: path.resolve(__dirname, '.env') });
 const ATTACH_SCREENSHOTS = process.env.ATTACH_SCREENSHOTS?.toLowerCase() === 'true';
@@ -42,9 +42,9 @@ function resolveBaseURL(): string {
  */
 export default defineConfig({
   testDir: './src/tests',
-  timeout:60_000,
-  expect :{
-    timeout:10_000
+  timeout: 60_000,
+  expect: {
+    timeout: 10_000
 
   },
   /* Run tests in files in parallel */
@@ -67,8 +67,8 @@ export default defineConfig({
     baseURL: resolveBaseURL(),
     headless: false,
     screenshot: ATTACH_SCREENSHOTS ? 'only-on-failure' : 'off',
-    
-    video:'on',
+
+    video: 'on',
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
   },
@@ -77,8 +77,9 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
+      testIgnore: /apisTests/,
       use: { ...devices['Desktop Chrome'] },
-    }
+    },
 
     // {
     //   name: 'firefox',
@@ -109,6 +110,14 @@ export default defineConfig({
     //   name: 'Google Chrome',
     //   use: { ...devices['Desktop Chrome'], channel: 'chrome' },
     // },
+    {
+      name: 'api',
+      testDir: './src/tests/apisTests',
+      use: {
+        baseURL: process.env.API_BASE_URL || 'https://restful-booker.herokuapp.com'
+      }
+
+    }
   ]
 
   /* Run your local dev server before starting the tests */

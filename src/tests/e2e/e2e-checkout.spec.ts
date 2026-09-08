@@ -16,6 +16,7 @@ import { visualStep } from '@utils/visualStep';
 
 const log = createLogger('e2e-checkout');
 
+
 // First product card on the TTACart inventory page.
 const FIRST_ITEM_ID = 'test-allthethings-tshirt-red';
 
