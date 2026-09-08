@@ -42,7 +42,7 @@ test.describe('Create Booking using API Helper',()=> {
             log.info(`Step 1:create Booking for ${payload.firstname} ${payload.lastname} (price ${payload.totalprice})`);
             const response = await api.post('/booking',{data: payload});
             log.info(`Response status: ${response.status()} for create booking`);
-            expect(api.isSuccessStatus(response)).toBe(true);
+            expect(api.isSuccess(response)).toBe(true);
             body = await api.parseJsonResponse(response) as CreateBookingResponse;
             //Attach the booking id to the test report
             await testInfo.attach('Create Booking Response', {
