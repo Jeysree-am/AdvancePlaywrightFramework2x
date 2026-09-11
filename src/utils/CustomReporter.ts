@@ -15,9 +15,10 @@ import {
 } from '@playwright/test/reporter';
 import * as fs from 'fs';
 import * as path from 'path';
-// import { analyzeFailure, type RcaVerdict } from '../ai/agents/rcaAgent';
-// import { analyzeFlaky, type BuildSummary, type FlakyResult } from '../ai/agents/flakyAnalyzer';
-// import { hasApiKey } from '../ai/config/providers';
+import { analyzeFailure, type RcaVerdict } from '../ai/agents/rcaAgent';
+import { analyzeFlaky, type BuildSummary, type FlakyResult } from '../ai/agents/flakyAnalyzer';
+import type { SelfHealingSuggestion } from '../ai/agents/selfHealingAgent';
+import { hasApiKey } from '../ai/config/providers';
 
 export interface StepData {
     title: string;
@@ -94,6 +95,8 @@ class CustomTTAReporter implements Reporter {
     private flakyResult?: FlakyResult;
     private prevBuildId?: string;
     private currBuildId?: string;
+    // Locator-healing suggestions captured from `ai-heal` attachments (Self-Healing tab).
+    private aiHeals: { test: string; file: string; suggestion: SelfHealingSuggestion }[] = [];
 
     onBegin(config: FullConfig, suite: Suite): void {
         const now = new Date();
@@ -311,6 +314,26 @@ class CustomTTAReporter implements Reporter {
                     }
                 } catch {
                     console.warn('Failed to read ai-data attachment');
+                }
+            }
+
+            // Locator-healing suggestions (from suggestHealing -> testInfo.attach('ai-heal')).
+            if (attachment.name === 'ai-heal' && attachment.contentType === 'application/json') {
+                try {
+                    const raw = attachment.body
+                        ? attachment.body.toString()
+                        : attachment.path
+                            ? fs.readFileSync(attachment.path, 'utf-8')
+                            : '';
+                    if (raw) {
+                        this.aiHeals.push({
+                            test: test.title,
+                            file: `${test.location.file}:${test.location.line}`,
+                            suggestion: JSON.parse(raw) as SelfHealingSuggestion,
+                        });
+                    }
+                } catch {
+                    console.warn('Failed to read ai-heal attachment');
                 }
             }
         }
@@ -832,6 +855,9 @@ class CustomTTAReporter implements Reporter {
         <div id="tab-flaky" class="main-tab-panel">
             ${this.generateFlakyTab()}
         </div>
+        <div id="tab-heal" class="main-tab-panel">
+            ${this.generateSelfHealingTab()}
+        </div>
     </div>
 
     <div id="screenshotModal" class="modal">
@@ -945,16 +971,18 @@ class CustomTTAReporter implements Reporter {
         </div>`;
     }
 
-    // Top-level tab bar: Test Results | AI Data | AI Verdict.
+    // Top-level tab bar: Test Results | AI Data | AI Verdict | Flaky | Self-Healing.
     private generateMainTabs(): string {
         const aiCount = this.aiData.length;
         const rcaCount = this.aiVerdicts.length;
+        const healCount = this.aiHeals.length;
         return `
         <div class="main-tabs">
             <button class="main-tab active" onclick="switchMainTab('results', this)">📋 Test Results</button>
             <button class="main-tab" onclick="switchMainTab('aidata', this)">🤖 AI Data${aiCount ? ` (${aiCount})` : ''}</button>
             <button class="main-tab" onclick="switchMainTab('verdict', this)">⚖️ AI Verdict${rcaCount ? ` (${rcaCount})` : ''}</button>
             <button class="main-tab" onclick="switchMainTab('flaky', this)">🔁 Flaky${this.flakyResult ? ` (${this.flakyResult.counts.flaky})` : ''}</button>
+            <button class="main-tab" onclick="switchMainTab('heal', this)">🩹 Self-Healing${healCount ? ` (${healCount})` : ''}</button>
         </div>`;
     }
 
@@ -1031,6 +1059,47 @@ class CustomTTAReporter implements Reporter {
         <div class="ai-card">
             <div class="ai-card-title">🤖 ${this.escapeHtml(d.test)}</div>
             <pre class="ai-json">${this.escapeHtml(pretty)}</pre>
+        </div>`;
+    }
+
+    // Self-Healing tab body: one card per captured locator-healing suggestion.
+    private generateSelfHealingTab(): string {
+        if (this.aiHeals.length === 0) {
+            return `<div class="ai-empty">🩹 No locator-healing suggestions captured in this run.</div>`;
+        }
+        return `<div class="ai-data-list">${this.aiHeals.map((h) => this.renderHealCard(h)).join('')}</div>`;
+    }
+
+    // Render a single healing suggestion: original -> healed, confidence, rationale.
+    private renderHealCard(h: { test: string; file: string; suggestion: SelfHealingSuggestion }): string {
+        const s = h.suggestion;
+        const pct = Math.round(s.confidence * 100);
+        const level = pct >= 70 ? 'high' : pct >= 40 ? 'medium' : 'low';
+        const healed = s.healedSelector
+            ? `<code>${this.escapeHtml(s.healedSelector)}</code>`
+            : `<em>not healable</em>`;
+        const alternatives = s.alternatives && s.alternatives.length
+            ? `<div class="heal-alt"><strong>Alternatives:</strong> ${s.alternatives
+                  .map((a) => `<code>${this.escapeHtml(a)}</code>`)
+                  .join(' ')}</div>`
+            : '';
+
+        return `
+        <div class="ai-card">
+            <div class="ai-card-title">🩹 ${this.escapeHtml(h.test)} <span class="verdict-file">${this.escapeHtml(h.file)}</span></div>
+            <div class="verdict-body">
+                <div class="verdict-badges">
+                    <span class="verdict-badge sev-${level}">Confidence: ${pct}%</span>
+                    <span class="verdict-badge prio">${s.healable ? 'Healable' : 'Not healable'}</span>
+                </div>
+                <div class="heal-swap">
+                    <span class="heal-broken"><code>${this.escapeHtml(s.originalSelector)}</code></span>
+                    <span class="heal-arrow">→</span>
+                    <span class="heal-fixed">${healed}</span>
+                </div>
+                <div class="verdict-root"><strong>Rationale:</strong> ${this.escapeHtml(s.rationale)}</div>
+                ${alternatives}
+            </div>
         </div>`;
     }
 
@@ -1315,6 +1384,13 @@ class CustomTTAReporter implements Reporter {
         .ai-card { border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; background: #fff; }
         .ai-card-title { background: #ecfdf5; color: #047857; font-weight: 600; padding: 10px 14px; border-bottom: 1px solid #e2e8f0; }
         .ai-json { margin: 0; padding: 14px; background: #1e293b; color: #e2e8f0; font-family: 'JetBrains Mono', monospace; font-size: 13px; overflow-x: auto; white-space: pre; }
+        .heal-swap { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+        .heal-swap code { font-family: 'JetBrains Mono', monospace; font-size: 13px; padding: 4px 8px; border-radius: 6px; }
+        .heal-broken code { background: #fef2f2; color: #b91c1c; text-decoration: line-through; }
+        .heal-fixed code { background: #ecfdf5; color: #047857; font-weight: 600; }
+        .heal-arrow { color: #64748b; font-weight: 700; }
+        .heal-alt { margin-top: 8px; color: #334155; }
+        .heal-alt code { background: #f1f5f9; color: #334155; font-family: 'JetBrains Mono', monospace; font-size: 13px; padding: 3px 7px; border-radius: 6px; margin-right: 4px; }
         .verdict-file { float: right; font-weight: 400; font-size: 12px; color: #64748b; font-family: 'JetBrains Mono', monospace; }
         .verdict-body { padding: 14px; }
         .verdict-badges { display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }

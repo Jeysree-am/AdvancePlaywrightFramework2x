@@ -1,0 +1,24 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateBookingPayload",
+  "description": "The booking request body for POST /booking. Authoritative contract for the AI test-data agent; a spec asserts it stays in sync with the `booking` definition of create-booking.schema.json.",
+  "type": "object",
+  "required": ["firstname", "lastname", "totalprice", "depositpaid", "bookingdates"],
+  "additionalProperties": false,
+  "properties": {
+    "firstname": { "type": "string", "minLength": 1 },
+    "lastname": { "type": "string", "minLength": 1 },
+    "totalprice": { "type": "integer", "minimum": 0 },
+    "depositpaid": { "type": "boolean" },
+    "bookingdates": {
+      "type": "object",
+      "required": ["checkin", "checkout"],
+      "additionalProperties": false,
+      "properties": {
+        "checkin": { "type": "string", "format": "date" },
+        "checkout": { "type": "string", "format": "date" }
+      }
+    },
+    "additionalneeds": { "type": "string" }
+  }
+}

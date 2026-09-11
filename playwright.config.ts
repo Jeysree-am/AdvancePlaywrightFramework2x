@@ -34,6 +34,8 @@ function resolveBaseURL(): string {
 
 }
 
+const API_BASE_URL = process.env.API_BASE_URL || 'https://restful-booker.herokuapp.com';
+
 
 
 
@@ -77,7 +79,7 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      testIgnore: /apisTests/,
+      testIgnore: /apisTests|aiTests/,
       use: { ...devices['Desktop Chrome'] },
     },
 
@@ -114,9 +116,16 @@ export default defineConfig({
       name: 'api',
       testDir: './src/tests/apisTests',
       use: {
-        baseURL: process.env.API_BASE_URL || 'https://restful-booker.herokuapp.com'
+        baseURL: API_BASE_URL
       }
 
+    },
+    {
+      name: 'ai',
+      testDir: './src/tests/aiTests',
+      use: {
+        baseURL: API_BASE_URL
+      }
     }
   ]
 

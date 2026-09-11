@@ -12,6 +12,7 @@
     "forceConsistentCasingInFileNames": true,
     "baseUrl": ".",
     "paths": {
+      "@ai/*": ["src/ai/*"],
       "@api/*": ["src/api/*"],
       "@config/*": ["src/config/*"],
       "@fixtures/*": ["src/fixtures/*"],
