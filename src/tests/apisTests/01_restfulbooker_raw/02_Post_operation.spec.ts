@@ -1,5 +1,6 @@
 import {test,expect} from '@playwright/test';
 import{logger} from '@utils/logger';
+
 test('TC#1 @p0-POST: Verify that create booking is working fine',async({request})=>{
      const baseUrl = process.env.API_BASE_URL||'https://https://restful-booker.herokuapp.com/';
      const payload={

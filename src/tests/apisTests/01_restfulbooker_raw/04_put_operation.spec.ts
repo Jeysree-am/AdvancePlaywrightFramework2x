@@ -1,5 +1,6 @@
 import{test,expect} from '@playwright/test';
 import{logger} from '@utils/logger';
+
 test.describe('PUT operation for Restful Booker API',()=>{
 test('TC#2 @p0-PUT: Verify that update booking is working fine',async({request})=>{
     const baseUrl = process.env.API_BASE_URL||'https://restful-booker.herokuapp.com/';
@@ -20,7 +21,9 @@ test('TC#2 @p0-PUT: Verify that update booking is working fine',async({request})
         additionalneeds:'breakfast',    
     } ;
     let token='';
-    let bookingId=0;    await test.step('create auth token',async()=>{
+    let bookingId=0;
+
+    await test.step('create auth token',async()=>{
         const responseData= await request.post(`${baseUrl}/auth`,{
             headers: {
                 'Content-Type': 'application/json'
@@ -38,6 +41,7 @@ test('TC#2 @p0-PUT: Verify that update booking is working fine',async({request})
 
 
     });
+
     await test.step('create booking for update',async()=>{
         const responseData= await request.post(`${baseUrl}/booking`,{
             headers: {

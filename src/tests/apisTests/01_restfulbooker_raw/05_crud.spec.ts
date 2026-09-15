@@ -43,6 +43,7 @@ interface BookingFlowState{
         },
         additionalneeds:'Breakfast',
     };
+
     test('TC#1 @p0  Create Token',async({request})=>{
         await test.step('create token',async()=>{
             const responseData= await request.post(`${baseUrl}/auth`,{
@@ -60,6 +61,7 @@ interface BookingFlowState{
                 logger.info('Auth Token Created Successfully');
         });
     });
+
     test('TC#2 @p0-Create Booking',async({request})=>{
         await test.step('create booking',async()=>{
             const responseData= await request.post(`${baseUrl}/booking`,{
@@ -76,11 +78,13 @@ interface BookingFlowState{
 
         });
     });
+
     test('TC#3 @p0-Update Booking',async({request})=>{
         await test.step('update booking',async()=>{
             const token=bookingFlowState.token;
             console.log(`Token: ${token}`);
             const bookingId=bookingFlowState.bookingId;
+            // eslint-disable-next-line playwright/no-conditional-in-test -- guard the serial chain when an earlier step failed
             if(!token || !bookingId){
                 throw new Error('Token or Booking ID is missing. Cannot proceed with update booking.');
             }

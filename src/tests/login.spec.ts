@@ -4,11 +4,13 @@ import{createLogger} from '@utils/logger';
 
 
 const log = createLogger('login.spec');
+
 test.describe('TTACART-Login',()=>{
     let loginPage: LoginPage;
 
     test.beforeEach(async({page})=>{
         loginPage = new LoginPage(page);
+
         await test.step('Open TTA Cart Login Page',async()=>{
             log.info('Opening TTA Login Page');
             await loginPage.open();
@@ -24,6 +26,7 @@ test.describe('TTACART-Login',()=>{
             await loginPage.loginAs('standard_user','tta_secret');
 
         });
+
         await test.step('verify login form is no longer shown',async()=>{
             log.info('Asserting that login form is hidden after login');
             await expect(page.locator('[data-test="login-button"]')).toBeHidden();

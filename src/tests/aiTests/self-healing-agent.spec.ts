@@ -41,6 +41,7 @@ test.describe('Self-healing agent', () => {
         // through Playwright (rather than DOM globals) keeps this spec compilable
         // under the project's ES-only `lib` setting.
         const formCount = await page.locator('form').count();
+        // eslint-disable-next-line playwright/no-conditional-in-test -- fall back to <body> when the page has no form
         const region = formCount > 0 ? page.locator('form').first() : page.locator('body');
         const domSnapshot = (await region.innerHTML()).slice(0, 12000);
 

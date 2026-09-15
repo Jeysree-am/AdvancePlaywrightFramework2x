@@ -1,0 +1,100 @@
+---
+description: Four mandatory quality gates to run before raising a PR
+alwaysApply: true
+---
+
+# Quality gates — mandatory before a PR
+
+Four gates. Apply each to **your** diff, not to the repo in general, and report
+the outcome in the PR body. They apply to human-written code as much as to
+generated code.
+
+---
+
+## 1. `ai-slop` — Was this generated, skimmed, and shipped?
+
+Run it, don't read it.
+
+- `npm run lint` and `npm run typecheck` must both be clean.
+- `npx playwright test <the spec you touched>` must actually execute the change.
+- Every symbol exists (`tsc` proves it) — an unrunnable import is a guess.
+- Every assertion can fail. A test that cannot go red is decoration.
+- Selectors came from the live page, not from a plausible guess.
+- No `any`, `as unknown as` or `@ts-expect-error` used to silence `tsc`.
+- No `test.skip(...)` added to turn a red test green. Only capability skips are
+  legitimate here: `!hasCredentials()` and `!agent.isConfigured()`.
+- The PR description claims nothing that no test exercises.
+
+Verdict: `<file>:L<line>: <what is unverified> → <how to verify it>`, then
+`verified: <command> <result>`, or `NOT VERIFIED — do not raise the PR`.
+
+## 2. `ponytail` — Does anything else in the run already record this?
+
+Full definition: `.commandcode/skills/ponytail/SKILL.md`. The ladder, in order:
+
+1. Does this need to exist at all? (YAGNI)
+2. Is it already in this codebase? Look before you write — check `src/utils/`,
+   `src/pages/`, `src/fixtures/`, `src/testdata/` first.
+3. Does the standard library do it?
+4. Does the platform or Playwright do it?
+5. Does an already-installed dependency do it?
+6. Can it be one line?
+7. Only then: the minimum code that works.
+
+Deletion over addition. Boring over clever. Complex request → ship the lazy
+version and question it in the same breath.
+
+## 3. `over-engineering` — How many callers does this abstraction have?
+
+Count real call sites. 0 → delete. 1 → inline. 2+ → keep.
+"Future" is not a caller.
+
+- A new helper in `src/utils/` when `ApiHelper`, `BookingApi`, `DataGenerator`,
+  `envConfig`, `visualStep`, `SchemaValidator` or `logger` already covers it.
+- A page-object method with one call site.
+- A new fixture where a plain page object would do.
+- An interface or abstract class with one implementer (`BasePage` has seven).
+- A generic parameter with one instantiation.
+- An options object where every call site sets the same field.
+- A config value, env var or flag nobody sets.
+- A new dependency for what Playwright or the standard library already ships.
+
+Format: `<file>:L<line>: <tag> <what>. <replacement>.` — tags `delete:`,
+`inline:`, `yagni:`, `stdlib:`, `native:`, `dep:`. End with
+`net: -<N> lines possible.` or `Lean already. Ship.`
+
+## 4. `framework-patterns` — Is this still part of this framework?
+
+- **Placement:** pages in `src/pages/`, fixtures in `src/fixtures/`, specs in
+  `src/tests/**`, helpers in `src/utils/`, data and JSON Schemas in
+  `src/testdata/`.
+- **Imports:** path aliases (`@ai @api @config @fixtures @pages @testdata
+  @utils`), never deep `../../` inside `src/`.
+- **Page objects:** extend `BasePage`; use `this.page`, `this.el`, `this.log`
+  and `goto()`; declare locators in the subclass.
+- **Specs:** `test`/`expect` from `@fixtures/test-base` (UI) or
+  `@fixtures/booker.fixture` (API), then request the page — no
+  `new InventoryPage(page)` inside a spec.
+- **Credentials:** `@config/credentials` or `@utils/envConfig`, never literals.
+- **Data:** `DataGenerator` or `src/testdata/`, not inline literals.
+- **HTTP:** `ApiHelper` / `BookingApi`; contract checks via `SchemaValidator`.
+- **Logging and steps:** `createLogger('<scope>')` and `test.step(...)` /
+  `visualStep(page, ...)`.
+- **Naming:** `*.spec.ts`, existing `@P0` / `@Regression` tag scheme.
+
+Verdict: `keep`, `relocate` (right code, wrong home) or `revert` (does not belong
+in this framework). A genuinely new pattern is allowed — name it and argue for
+it; silent drift is the failure.
+
+---
+
+## Automated gates (CI runs these too)
+
+```bash
+npm run lint
+npm run typecheck
+npx playwright test
+```
+
+A gate that finds something is not a failed PR. **An unreported finding is.**
+Fix it, or say why it stands.

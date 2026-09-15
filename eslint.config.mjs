@@ -1,5 +1,6 @@
 import js from '@eslint/js';
 import tseslint from 'typescript-eslint';
+import playwright from 'eslint-plugin-playwright';
 
 export default tseslint.config(
   {
@@ -31,6 +32,19 @@ export default tseslint.config(
       // A leading underscore marks a deliberately unused binding, e.g.
       // CustomReporter.onEnd's `_result` (part of the reporter interface).
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+    },
+  },
+
+  // Playwright specs get the plugin's recommended rules on top of the above.
+  {
+    files: ['src/tests/**/*.spec.ts'],
+    ...playwright.configs['flat/recommended'],
+    rules: {
+      ...playwright.configs['flat/recommended'].rules,
+      // Conditional skips are deliberate here: without an LLM key or
+      // credentials the suite reports "skipped" instead of failing offline.
+      // Unconditional .skip()/.fixme() still error.
+      'playwright/no-skipped-test': ['error', { allowConditional: true }],
     },
   },
 );

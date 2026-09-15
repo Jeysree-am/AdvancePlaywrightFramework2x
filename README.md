@@ -15,11 +15,16 @@ fixtures, environment-driven configuration via dotenv, and rich HTML reporting.
 | Faker | Random test data (`DataGenerator`) |
 | Ajv + ajv-formats | JSON Schema (contract) validation |
 | Allure Playwright | Allure integration (installed) |
-| [ESLint](https://eslint.org) (`eslint` ^10) + [typescript-eslint](https://typescript-eslint.io) | Static analysis for the TypeScript sources |
+| [ESLint](https://eslint.org) (`eslint` ^10) + [typescript-eslint](https://typescript-eslint.io) + [eslint-plugin-playwright](https://github.com/playwright-community/eslint-plugin-playwright) | Static analysis for the TypeScript sources and Playwright spec rules |
 
 The framework also ships an optional **AI layer** (see [AI layer](#ai-layer)) — a
 provider-agnostic LLM client plus four schema-validated agents — and a custom TTA
 HTML reporter that surfaces their output.
+
+Every change to this repo passes four mandatory **quality gates** before it is
+reviewable, and the same gates are configured for every AI assistant that might
+write the change — Copilot, Claude Code, Cursor, Windsurf, Kiro, OpenCode and
+CommandCode. See [Quality gates](#quality-gates).
 
 ## Project structure
 
@@ -128,40 +133,61 @@ npx playwright test src/tests/e2e/e2e-checkout-env.spec.ts
 # A tagged suite (@P0)
 npx playwright test --grep "@P0"
 
-# Headless mode
-npx playwright test --project=chromium --headed=false
+# Headless locally (CI sets this automatically)
+CI=true npx playwright test --project=chromium
 ```
 
-> The config currently runs headed by default (`headless: false`). Set
-> `ATTACH_SCREENSHOTS=true` in `.env` to attach step screenshots to the TTA
-> report.
+> Browser mode follows the `CI` variable (`headless: !!process.env.CI`): local
+> runs are headed, CI runs are headless. In PowerShell set it with
+> `$env:CI='true'` before the command. Set `ATTACH_SCREENSHOTS=true` in `.env`
+> to attach step screenshots to the TTA report.
 
 ### 4. Lint
 
-Static analysis uses ESLint 10 with the flat config in `eslint.config.mjs` at the
-repo root. It validates **TypeScript** (`src/**/*.ts`, `playwright.config.ts`) with
-the recommended JS rules plus `typescript-eslint`'s recommended (non-type-checked)
-rules, and **JavaScript** (`**/*.js`, `**/*.mjs`, `**/*.cjs` — i.e.
-`eslint.config.mjs` itself) with the recommended JS rules. The generated artifact
-folders (`playwright-report/`, `test-results/`, `reports/`, `tta-report/`,
-`logs/`) are ignored.
+Static analysis uses **ESLint 10** with the flat config in `eslint.config.mjs` at
+the repo root. Three layers of rules apply:
+
+| Files | Rules applied |
+|-------|---------------|
+| `**/*.{js,mjs,cjs}` (includes `eslint.config.mjs`) | `@eslint/js` recommended |
+| `**/*.{ts,mts,cts}` (`src/**`, `playwright.config.ts`) | `@eslint/js` + `typescript-eslint` recommended (non-type-checked) |
+| `src/tests/**/*.spec.ts` | additionally `eslint-plugin-playwright`'s `flat/recommended` |
+
+The generated artifact folders (`node_modules/`, `playwright-report/`,
+`test-results/`, `reports/`, `tta-report/`, `logs/`) are ignored. Conditional
+`test.skip(...)` calls are allowed because the AI and credential-driven specs
+skip — rather than fail — when their inputs are absent; an unconditional
+`.skip()`/`.fixme()` is still an error.
+
+Run the check manually:
 
 ```bash
-# Install (already in devDependencies, so `npm install` is enough)
-npm install --save-dev eslint @eslint/js typescript-eslint
-
-# Lint everything
+# Lint the whole repo
 npm run lint
 
-# Lint and auto-fix what can be fixed
+# Lint and auto-fix everything that is fixable (spacing, etc.)
 npm run lint:fix
 
-# Lint a single file
+# Lint a single file or a folder
 npx eslint src/utils/logger.ts
+npx eslint src/tests/e2e
+
+# Lint only the Playwright specs (the extra plugin rules)
+npx eslint "src/tests/**/*.spec.ts"
+```
+
+To install the tooling by hand (already in `devDependencies`, so a plain
+`npm install` is normally enough):
+
+```bash
+npm install --save-dev eslint @eslint/js typescript-eslint eslint-plugin-playwright
 ```
 
 If `NODE_ENV=production` is set in your shell, npm skips devDependencies — use
 `npm install --include=dev` to install the linter in that case.
+
+CI runs `npm run lint` as its own step before the browser install, so a lint
+error fails the build before any test executes.
 
 The config itself:
 
@@ -169,6 +195,7 @@ The config itself:
 // eslint.config.mjs
 import js from '@eslint/js';
 import tseslint from 'typescript-eslint';
+import playwright from 'eslint-plugin-playwright';
 
 export default tseslint.config(
   {
@@ -196,9 +223,165 @@ export default tseslint.config(
   {
     files: ['**/*.{ts,mts,cts}'],
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
+    rules: {
+      // A leading underscore marks a deliberately unused binding, e.g.
+      // CustomReporter.onEnd's `_result` (part of the reporter interface).
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+    },
+  },
+
+  // Playwright specs get the plugin's recommended rules on top of the above.
+  {
+    files: ['src/tests/**/*.spec.ts'],
+    ...playwright.configs['flat/recommended'],
+    rules: {
+      ...playwright.configs['flat/recommended'].rules,
+      // Conditional skips are deliberate here: without an LLM key or
+      // credentials the suite reports "skipped" instead of failing offline.
+      // Unconditional .skip()/.fixme() still error.
+      'playwright/no-skipped-test': ['error', { allowConditional: true }],
+    },
   },
 );
 ```
+
+### 5. Typecheck
+
+The second automated gate is `tsc --noEmit`: it type-checks `src/**` and
+`playwright.config.ts` against `tsconfig.json` (strict mode, `@/*` path aliases)
+and emits nothing.
+
+```bash
+# Type-check the whole project
+npm run typecheck
+```
+
+This matters because the Playwright runner transpiles the specs without
+type-checking them, so a broken type would otherwise only show up at runtime.
+
+`tsconfig.json` sets `"ignoreDeprecations": "6.0"` because TypeScript 6 still
+accepts the legacy `moduleResolution: "node"` and `baseUrl` options but flags
+them; both stop working in TypeScript 7, so the follow-up is to migrate to
+`moduleResolution: "bundler"` (or `node16`) and drop `baseUrl`.
+
+CI runs `npm run lint` and then `npm run typecheck`, both before the browser
+install, so either failure stops the build before any test executes.
+
+## Quality gates
+
+Every pull request in this repository passes through **four quality gates** plus
+the automated CI gates. They are the primary check on a PR: a change is not ready
+for review until each gate has been applied to *its* diff and the outcome
+reported. Nothing is exempt — not a one-line fix, not a docs-only change.
+
+The gates are deliberately written for both audiences at once. They apply to
+human-written code exactly as much as to code produced by GitHub Copilot, Claude
+Code, Cursor, Windsurf, Kiro, OpenCode, CommandCode or any other assistant, and
+each of those tools is configured to read them (see
+[Where the rules live](#where-the-rules-live)).
+
+### The four gates
+
+| # | Gate | The question it answers | What it catches |
+|---|------|-------------------------|-----------------|
+| 1 | `ai-slop` | Was this generated, skimmed, and shipped? | Unverified output: an import that does not resolve, a test that cannot fail, a selector nobody looked at, a claim no test exercises, `any` used to silence `tsc`, a `test.skip` added to hide a red test |
+| 2 | `ponytail` | Does anything else in the run already record this? | Reinventing what `src/utils/`, `src/pages/`, `src/fixtures/` or Playwright already provide |
+| 3 | `over-engineering` | How many callers does this abstraction have? | Speculative layers: code with 0 callers, a helper with 1, an interface with one implementer, an options object nobody varies, a new dependency the standard library already covers |
+| 4 | `framework-patterns` | Is this still part of this framework? | Drift: files outside the expected home, deep `../../` imports where an alias exists, page objects that skip `BasePage`, specs that bypass the fixtures, hardcoded credentials |
+
+Each gate has its own verdict format:
+
+- `ai-slop` — `file:L<line>: <what is unverified> → <how to verify it>`, then
+  `verified: <command> <result>`, or `NOT VERIFIED — do not raise the PR`.
+- `over-engineering` — `file:L<line>: <tag> <what>. <replacement>.` ending in
+  `net: -<N> lines possible.` (or `Lean already. Ship.`).
+- `framework-patterns` — `keep`, `relocate` (right code, wrong home) or `revert`.
+- `ponytail` — the change is either the shortest thing that works, or it says in
+  one line what it skipped and when to add it.
+
+A gate that finds something is **not** a failed PR. An unreported finding is.
+Fix it, or state why it stands and let the reviewer decide.
+
+### The automated gates
+
+These are the gates CI enforces mechanically. They run on every push and must be
+green:
+
+```bash
+npm run lint        # ESLint 10 - typescript-eslint + the Playwright spec rules
+npm run typecheck   # tsc --noEmit
+npx playwright test # the suite
+```
+
+Sections [4. Lint](#4-lint) and [5. Typecheck](#5-typecheck) above cover the
+first two. In the workflow, lint and typecheck run as their own steps *before*
+the browsers are installed, so a lint or type error fails the build in seconds
+instead of after a browser download.
+
+### What happens when a PR is raised
+
+1. **CI runs the automated gates first.** Lint, then typecheck, then the suite. A
+   red gate stops the PR before it reaches a reviewer — no human time is spent on
+   a change that does not compile, does not lint, or does not pass its own test.
+2. **The four judgement gates are applied to the diff** by the author or the
+   assistant that produced it, and their outcomes are reported in the PR
+   description. Each finding is either fixed or explicitly justified.
+3. **The review is about judgement, not hygiene.** By the time a person reads the
+   PR, the mechanical questions have been answered: does it compile, does it run,
+   is it already recorded elsewhere, does it still belong to this framework. What
+   is left for the reviewer is the question the gates cannot answer — *is this
+   the right change?*
+
+That is what keeps quality from eroding: the gates are cheap, they run on every
+PR, and none of them can be skipped with "it's only a small change".
+
+### Where the rules live
+
+Each tool needs its own file, because the tools do not share one mechanism. The
+same four gates are written into every file below, so whichever assistant works
+on this repo, it reads the same rules:
+
+| Tool | File it reads | How it is loaded |
+|------|---------------|------------------|
+| CommandCode | `AGENTS.md` + `.commandcode/skills/` | `AGENTS.md` is project **memory**, re-read every turn; the gate skills load on demand, e.g. `/skill:quality-gates` |
+| OpenCode | `AGENTS.md` | its native rules file |
+| GitHub Copilot | `.github/copilot-instructions.md` | repository custom instructions |
+| Claude Code | `.claude/skills/quality-gates/SKILL.md` | Agent Skill |
+| Cursor | `.cursor/rules/quality-gates.mdc` | project rule, `alwaysApply: true` |
+| Windsurf | `.windsurf/rules/quality-gates.md` | workspace rule, `trigger: always_on` |
+| Kiro | `.kiro/steering/quality-gates.md` | steering document, `inclusion: always` |
+
+`AGENTS.md` also covers the other `AGENTS.md`-aware agents (Codex, Amp, Devin,
+Jules and friends), so the table is the set of tools that need a file of their
+own — not the whole audience.
+
+For CommandCode the four gates are additionally invocable skills:
+`/skill:quality-gates` runs the summary, and `/skill:ai-slop`,
+`/skill:ponytail`, `/skill:over-engineering` and `/skill:framework-patterns`
+carry the full checklists.
+
+> **Keeping them in sync.** Because every tool needs its own path, the gate text
+> exists as several copies of plain Markdown. Nothing warns you when they drift —
+> when you change a gate, change it in every file in the table.
+
+### Running the gates by hand
+
+The automated gates, in the order CI runs them:
+
+```bash
+npm run lint
+npm run typecheck
+npx playwright test
+```
+
+The four judgement gates, in the order they should be applied — `ai-slop` first
+(an unverified diff is not worth sizing), then `ponytail` (is it already
+recorded?) before `over-engineering` (does the new shape have callers?), then
+`framework-patterns` on whatever survives:
+
+- **CommandCode** — `/skill:ai-slop`, `/skill:ponytail`,
+  `/skill:over-engineering`, `/skill:framework-patterns`
+- **Anything else** — open the matching file from the table above and follow it
 
 ## Specs
 

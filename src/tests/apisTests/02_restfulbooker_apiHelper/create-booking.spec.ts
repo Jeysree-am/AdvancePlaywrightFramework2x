@@ -22,6 +22,7 @@ interface CreateBookingResponse{
     };
 
 }
+
 test.describe('Create Booking using API Helper',()=> {
     test('TC#1 Create Booking',async({request},testInfo)=> {
         const api = new ApiHelper(request);
@@ -37,6 +38,7 @@ test.describe('Create Booking using API Helper',()=> {
             additionalneeds:'Breakfast',
         };
         let body:CreateBookingResponse;
+
         //Step1-Send the create request
         await test.step('Create Booking with payload',async()=>{
             log.info(`Step 1:create Booking for ${payload.firstname} ${payload.lastname} (price ${payload.totalprice})`);
@@ -50,6 +52,7 @@ test.describe('Create Booking using API Helper',()=> {
                 contentType: 'application/json',
             });
         });
+
         //Step 2-Verify the server echoed the payload correctly
         await test.step('Verify the server echoed the payload correctly',async()=>{
             log.info(`Step 2:Verify the server echoed the booking id ${body.bookingid} and payload correctly`);
