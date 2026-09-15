@@ -15,5 +15,6 @@ node_modules/
 # Environment
 .env
 
-# Local assistant/tooling config
-.commandcode/
+# Local assistant/tooling config. The gate skills ship with the repo so the
+# rule files can reference them; taste state is machine-local and auto-managed.
+.commandcode/taste/
