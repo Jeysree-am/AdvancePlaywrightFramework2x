@@ -96,7 +96,11 @@ environment via `src/utils/envConfig.ts`:
 | `STANDARD_USER` | Yes | `standard_user` | Login username |
 | `TTA_SECRET` | Yes | `tta_secret` | Login password |
 
-Missing credentials cause a fast, clear failure before any browser launches.
+Missing credentials make the env-driven spec **skip** rather than fail — the
+same convention the AI specs use — so a checkout without a `.env` (CI, for
+example) still collects every other test and stays green. The suite is reported
+as skipped, so it is visibly not executed rather than silently passing.
+`getCredentials()` still throws if it is ever called while the vars are unset.
 
 > Note: TTACart accepts a fixed set of users (e.g. `standard_user`,
 > `locked_out_user`, `problem_user`) — all with the password `tta_secret`.

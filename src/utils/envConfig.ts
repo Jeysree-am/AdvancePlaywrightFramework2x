@@ -20,6 +20,15 @@ function env(key: string): string | undefined {
     return value && value.trim() !== '' ? value.trim() : undefined;
 }
 
+/**
+ * True when both credentials are configured. Never throws — call this at
+ * collection time to skip the env-driven spec on a keyless run instead of
+ * letting a throw abort the whole test run.
+ */
+export function hasCredentials(): boolean {
+    return Boolean(env('STANDARD_USER') && env('TTA_SECRET'));
+}
+
 /** Required credentials — throws a clear message before any browser starts. */
 export function getCredentials(): Credentials {
     const username = env('STANDARD_USER');

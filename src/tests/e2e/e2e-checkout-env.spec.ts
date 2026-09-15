@@ -10,19 +10,24 @@
 
 import { test, expect } from '@fixtures/test-base';
 import { DataGenerator } from '@utils/DataGenerator';
-import { getCredentials } from '@utils/envConfig';
+import { getCredentials, hasCredentials } from '@utils/envConfig';
 import { createLogger } from '@utils/logger';
 import { visualStep } from '@utils/visualStep';
 
 const log = createLogger('e2e-checkout-env');
-const credentials = getCredentials();
 
 // First product card on the TTACart inventory page.
 const FIRST_ITEM_ID = 'test-allthethings-tshirt-red';
 
 test.describe('@P0 @Regression E2E @Checkout Checkout Feature', () => {
+    // Credentials are read at collection time only to decide whether to run —
+    // never thrown, so a missing .env skips this suite instead of aborting the
+    // whole run (which would take every other project down with it).
+    test.skip(!hasCredentials(), 'STANDARD_USER and TTA_SECRET are not set (see .env.example)');
+
     // Step 1 — every test in this suite starts already logged in.
     test.beforeEach(async ({ loginPage }) => {
+        const credentials = getCredentials();
         log.info(`Step 1: logging in as ${credentials.username}`);
         await loginPage.open();
         await loginPage.loginAs(credentials.username, credentials.password);
