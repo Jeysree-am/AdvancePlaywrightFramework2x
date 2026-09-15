@@ -67,7 +67,8 @@ export default defineConfig({
   use: {
     /* Base URL to use in actions like `await page.goto('')`. */
     baseURL: resolveBaseURL(),
-    headless: false,
+    /* CI runners have no display server, so launch headed locally only. */
+    headless: !!process.env.CI,
     screenshot: ATTACH_SCREENSHOTS ? 'only-on-failure' : 'off',
 
     video: 'on',
