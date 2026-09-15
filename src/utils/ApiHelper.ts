@@ -11,7 +11,7 @@ export interface ApiRequestOptions{
     url:string;
     method:HttpMethod;
     headers?:Record<string,string>;
-    data?:Record<string,any>;
+    data?:unknown;
     params?:Record<string,string>;
     timeout?:number;
 }
@@ -92,7 +92,7 @@ export class ApiHelper{
     }
 
     /*Parse JSON response and return the data */
-    async parseJsonResponse(response:APIResponse):Promise<T>{
+    async parseJsonResponse<T>(response:APIResponse):Promise<T>{
      return await response.json() as T;
     }
 

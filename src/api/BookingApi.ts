@@ -7,7 +7,7 @@
 
 
 import { APIResponse } from "@playwright/test"; 
-import { ApiHelper } from "@utils/ApiHelper";
+import { ApiHelper, type ApiContext } from "@utils/ApiHelper";
 
 export interface BookingDates{
     checkin:string;
@@ -131,7 +131,7 @@ private authHeaders(token: string): Record<string, string> {
     /** POST /booking -> raw response, so callers can assert a rejection (e.g. 500). */
     async createBookingResponse(payload: unknown): Promise<APIResponse> {
         return this.apiHelper.post(`${this.baseUrl}/booking`, {
-            data: payload as Record<string, any>,
+            data: payload,
             headers: JSON_HEADERS,
         });
     }
@@ -149,7 +149,7 @@ private authHeaders(token: string): Record<string, string> {
     async updateBookingResponse(id: number, payload: unknown, token?: string): Promise<APIResponse> {
         return this.sendAuthed(
             (t) => this.apiHelper.put(`${this.baseUrl}/booking/${id}`, {
-                data: payload as Record<string, any>,
+                data: payload,
                 headers: this.authHeaders(t),
             }),
             token,

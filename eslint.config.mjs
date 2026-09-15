@@ -27,5 +27,10 @@ export default tseslint.config(
   {
     files: ['**/*.{ts,mts,cts}'],
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
+    rules: {
+      // A leading underscore marks a deliberately unused binding, e.g.
+      // CustomReporter.onEnd's `_result` (part of the reporter interface).
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+    },
   },
 );

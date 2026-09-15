@@ -1,5 +1,4 @@
 import{expect,test,request} from '@playwright/test';
-import{logger} from '@utils/logger';
 test('new context api for isolated headers',async()=>{
     const ctx= await request.newContext({
         baseURL:'https://gorest.in',

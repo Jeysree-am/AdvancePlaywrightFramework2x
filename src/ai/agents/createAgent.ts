@@ -22,7 +22,7 @@ import { SchemaValidator } from '@utils/SchemaValidator';
 import { LLMClient } from '@ai/client/LLMClient';
 import type { LLMMessage, LLMProvider } from '@ai/client/types';
 
-export interface AgentDefinition<T> {
+export interface AgentDefinition {
     /** Identifies the agent in logs and schema-cache keys. */
     name: string;
     /** The agent's instructions. The output contract is appended automatically. */
@@ -84,7 +84,7 @@ function extractJson(text: string): string {
     return start !== -1 && end > start ? body.slice(start, end + 1) : body;
 }
 
-export function createAgent<T>(def: AgentDefinition<T>): Agent<T> {
+export function createAgent<T>(def: AgentDefinition): Agent<T> {
     // Built on first use, not at import. Agents are created at module scope and
     // imported by CustomReporter, so resolving the provider has to stay lazy:
     // a misconfigured environment must not crash the reporter at load time.

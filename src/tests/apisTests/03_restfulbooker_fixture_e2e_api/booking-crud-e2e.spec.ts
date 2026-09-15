@@ -1,4 +1,3 @@
-import { BookingApi } from '@api/BookingApi';
 import{test,expect} from '@fixtures/booker.fixture'
 import { createLogger } from '@utils/logger';
 import {buildBooking} from '@testdata/booking.data';

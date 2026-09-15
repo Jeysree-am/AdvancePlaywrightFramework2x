@@ -37,7 +37,7 @@ export class DataGenerator{
 
     }
     static password(length=12):string{
-        return faker.internet.password();
+        return faker.internet.password({ length });
     }
     static Credentials():Credentials{
         return{
