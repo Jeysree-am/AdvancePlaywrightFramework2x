@@ -3,12 +3,16 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
-  "scripts": {},
+  "scripts": {
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@faker-js/faker": "^10.5.0",
     "@playwright/test": "^1.62.1",
     "@types/node": "^26.2.0",
@@ -17,7 +21,9 @@
     "allure-playwright": "^3.10.2",
     "csv-parse": "^7.0.2",
     "dotenv": "^17.4.2",
+    "eslint": "^10.10.0",
     "jsonpath-plus": "^10.4.0",
+    "typescript-eslint": "^8.70.0",
     "winston": "^3.19.0",
     "xlsx": "^0.18.5"
   }

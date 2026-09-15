@@ -15,6 +15,7 @@ fixtures, environment-driven configuration via dotenv, and rich HTML reporting.
 | Faker | Random test data (`DataGenerator`) |
 | Ajv + ajv-formats | JSON Schema (contract) validation |
 | Allure Playwright | Allure integration (installed) |
+| [ESLint](https://eslint.org) (`eslint` ^10) + [typescript-eslint](https://typescript-eslint.io) | Static analysis for the TypeScript sources |
 
 The framework also ships an optional **AI layer** (see [AI layer](#ai-layer)) — a
 provider-agnostic LLM client plus four schema-validated agents — and a custom TTA
@@ -130,6 +131,70 @@ npx playwright test --project=chromium --headed=false
 > The config currently runs headed by default (`headless: false`). Set
 > `ATTACH_SCREENSHOTS=true` in `.env` to attach step screenshots to the TTA
 > report.
+
+### 4. Lint
+
+Static analysis uses ESLint 10 with the flat config in `eslint.config.mjs` at the
+repo root. It validates **TypeScript** (`src/**/*.ts`, `playwright.config.ts`) with
+the recommended JS rules plus `typescript-eslint`'s recommended (non-type-checked)
+rules, and **JavaScript** (`**/*.js`, `**/*.mjs`, `**/*.cjs` — i.e.
+`eslint.config.mjs` itself) with the recommended JS rules. The generated artifact
+folders (`playwright-report/`, `test-results/`, `reports/`, `tta-report/`,
+`logs/`) are ignored.
+
+```bash
+# Install (already in devDependencies, so `npm install` is enough)
+npm install --save-dev eslint @eslint/js typescript-eslint
+
+# Lint everything
+npm run lint
+
+# Lint and auto-fix what can be fixed
+npm run lint:fix
+
+# Lint a single file
+npx eslint src/utils/logger.ts
+```
+
+If `NODE_ENV=production` is set in your shell, npm skips devDependencies — use
+`npm install --include=dev` to install the linter in that case.
+
+The config itself:
+
+```js
+// eslint.config.mjs
+import js from '@eslint/js';
+import tseslint from 'typescript-eslint';
+
+export default tseslint.config(
+  {
+    ignores: [
+      'node_modules/**',
+      'playwright-report/**',
+      'test-results/**',
+      'reports/**',
+      'tta-report/**',
+      'logs/**',
+    ],
+  },
+
+  // JavaScript sources validated by ESLint:
+  //   * eslint.config.mjs itself
+  //   * any other .js / .mjs / .cjs file in the repo (none today)
+  {
+    files: ['**/*.{js,mjs,cjs}'],
+    extends: [js.configs.recommended],
+  },
+
+  // TypeScript sources validated by ESLint:
+  //   * src/**/*.ts            (specs, page objects, fixtures, utils, AI layer)
+  //   * playwright.config.ts   (repo root)
+  {
+    files: ['**/*.{ts,mts,cts}'],
+    extends: [js.configs.recommended, ...tseslint.configs.recommended],
+  },
+);
+```
 
 ## Specs
 
