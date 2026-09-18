@@ -15,11 +15,27 @@ export default tseslint.config(
   },
 
   // JavaScript sources validated by ESLint:
-  //   * eslint.config.mjs itself
-  //   * any other .js / .mjs / .cjs file in the repo (none today)
+  //   * eslint.config.mjs itself (.mjs, ESM)
+  //   * cucumber.js and any other .js / .cjs file (CommonJS, see below)
   {
     files: ['**/*.{js,mjs,cjs}'],
     extends: [js.configs.recommended],
+  },
+
+  // CommonJS sources get the Node module globals, which `js.configs.recommended`
+  // cannot know about — without these, `require`/`module`/`__dirname` in
+  // cucumber.js are reported as undefined. Scoped to .js/.cjs only; .mjs is ESM
+  // and would be a false positive.
+  {
+    files: ['**/*.{js,cjs}'],
+    languageOptions: {
+      globals: {
+        require: 'readonly',
+        module: 'readonly',
+        process: 'readonly',
+        __dirname: 'readonly',
+      },
+    },
   },
 
   // TypeScript sources validated by ESLint:
