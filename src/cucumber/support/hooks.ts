@@ -1,6 +1,11 @@
-import { After, AfterStep, Before } from "@cucumber/cucumber";
+import { After, AfterStep, Before, setDefaultTimeout } from "@cucumber/cucumber";
 import { chromium } from "@playwright/test";
 import { BASE_URL, type CustomWorld } from "./world";
+
+// Cucumber's default step timeout is 5s, which a browser step (navigate, log in,
+// assert a page) exceeds under any load — it fails as a step timeout rather than
+// a useful error. Match the 60s playwright.config.ts allows a Playwright test.
+setDefaultTimeout(60_000);
 
 // HEADED=1 (set by the cucumber:* npm scripts through cross-env) opens a visible
 // browser. Anything else — including CI=true — runs headless, which is the same
