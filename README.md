@@ -590,6 +590,24 @@ ran.
 See `src/tests/aiTests/notes.md` for the per-agent flows, schemas, and reporter
 wiring.
 
+## Cucumber (BDD) layer
+
+Cucumber features under `src/cucumber/` drive the same page objects through a
+`CustomWorld` instead of Playwright fixtures, and report into the same
+`tta-report/` HTML through `CustomTTAReporter.renderExternalRun` — one report
+history for both runners.
+
+```bash
+npm run cucumber:level0     # level-00-Installation
+npm run cucumber:level1     # level-01-basic
+npm run cucumber            # every level
+```
+
+The root `cucumber.js` holds the profiles (`default`, `level0`, `level1`,
+`level2`) and the ts-node / tsconfig-paths registration; each profile filters on
+an `@levelN` tag. See [`src/cucumber/README.md`](src/cucumber/README.md) for the
+layout, the report integration and the gotchas.
+
 ## Notes
 
 - `.env` is git-ignored — secrets stay out of version control. Use

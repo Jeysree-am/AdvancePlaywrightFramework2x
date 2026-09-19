@@ -39,6 +39,10 @@ npm run cucumber:headed     # every level, visible browser
 
 There is no `cucumber:headless` script — see [Profiles](#profiles-and-tags).
 
+Every `cucumber:*` script also sets `ATTACH_SCREENSHOTS=true`, so each step is
+captured into the report. The plain `cucumber` script and the `test:bdd*` aliases
+do not — set the variable yourself for those.
+
 Manually, in PowerShell:
 
 ```powershell
@@ -173,6 +177,9 @@ with that pattern and silently drops anything else.
   but `*.steps.ts` would be clearer.
 - `npm run test:bdd:report` and `test:bdd:tta` use `open`, which is macOS-only —
   on Windows use `Start-Process tta-report\index.html`.
+- **Screenshots cost memory** — every step snapshots the page, which is meaningful
+  on a small machine. To keep failure evidence without the per-step cost, gate the
+  `AfterStep` hook in `hooks.ts` on the step result's status.
 
 ## Gates
 
