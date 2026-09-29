@@ -800,7 +800,7 @@ class CustomTTAReporter implements Reporter {
     </style>
 </head>
 <body>
-    <div class="header"><h1>📊 TTA Report History</h1><p>The Testing Academy - Playwright Framework</p></div>
+    <div class="header"><h1>📊 TTA Report History</h1><p>Playwright Framework</p></div>
     <div class="report-list">
         ${files.map((f, i) => {
             const match = f.match(/report_(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})\.html/);
@@ -834,7 +834,7 @@ class CustomTTAReporter implements Reporter {
 <body>
     <div class="header">
         <h1>🎭 TTA Automation Report</h1>
-        <p class="header-subtitle">The Testing Academy - Playwright Framework</p>
+        <p class="header-subtitle">Playwright Framework</p>
     </div>
 
     <div class="container">
@@ -866,7 +866,7 @@ class CustomTTAReporter implements Reporter {
     </div>
 
     <footer class="report-footer">
-        <p>Built with ❤️ by <a href="https://thetestingacademy.com" target="_blank">Pramod Dutta</a> | <a href="https://thetestingacademy.com" target="_blank">The Testing Academy</a></p>
+        <p>Built with ❤️ by Jeysree AM</p>
     </footer>
 
     <script>
@@ -1675,10 +1675,12 @@ class CustomTTAReporter implements Reporter {
             background: white;
             border-radius: var(--radius);
             box-shadow: var(--shadow-lg);
-            overflow: hidden;
+            overflow: auto;
+            max-height: 70vh;
         }
         .test-table {
             width: 100%;
+            min-width: max-content;
             border-collapse: separate;
             border-spacing: 0;
             font-size: 13px;
